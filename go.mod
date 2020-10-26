@@ -1,4 +1,4 @@
-module github.com/d74id/zapmw
+module github.com/d47id/zapmw
 
 go 1.15
 
