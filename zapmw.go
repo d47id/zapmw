@@ -3,6 +3,7 @@ package zapmw
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/middleware"
@@ -25,6 +26,7 @@ func New(logger *zap.Logger) func(next http.Handler) http.Handler {
 				zap.String("path", r.URL.Path),
 				zap.String("remote_addr", r.RemoteAddr),
 				zap.String("user_agent", r.UserAgent()),
+				zap.String("referrer", r.Referer()),
 				zap.Time("start_time", start),
 			)
 
@@ -45,13 +47,26 @@ func New(logger *zap.Logger) func(next http.Handler) http.Handler {
 				zap.Int("bytes_written", ww.BytesWritten()),
 			)
 
-			switch {
-			case status < 400:
-				logger.Info("request complete")
-			default:
-				logger.Error("request completed with error")
-			}
+			logHTTPStatus(logger, status)
 		})
+	}
+}
+
+func logHTTPStatus(l *zap.Logger, status int) {
+	var msg string
+	if msg = http.StatusText(status); msg == "" {
+		msg = "unknown status " + strconv.Itoa(status)
+	}
+
+	switch {
+	case status < 300:
+		l.Debug(msg)
+		return
+	case status < 500:
+		l.Warn(msg)
+		return
+	default:
+		l.Error(msg)
 	}
 }
 
