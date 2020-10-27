@@ -21,7 +21,7 @@ func New(logger *zap.Logger) func(next http.Handler) http.Handler {
 			start := time.Now()
 
 			// set incomplete request fields
-			logger = logger.With(
+			l := logger.With(
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
 				zap.String("remote_addr", r.RemoteAddr),
@@ -41,7 +41,7 @@ func New(logger *zap.Logger) func(next http.Handler) http.Handler {
 
 			// get completed request fields
 			status := ww.Status()
-			logger = logger.With(
+			l = l.With(
 				zap.Duration("duration", time.Since(start)),
 				zap.Int("status", status),
 				zap.Int("bytes_written", ww.BytesWritten()),
