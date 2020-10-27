@@ -34,7 +34,7 @@ func New(logger *zap.Logger) func(next http.Handler) http.Handler {
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
 			// store logger in context
-			ctx := context.WithValue(r.Context(), key, logger)
+			ctx := context.WithValue(r.Context(), key, l)
 
 			// invoke next handler
 			next.ServeHTTP(ww, r.WithContext(ctx))
@@ -47,7 +47,7 @@ func New(logger *zap.Logger) func(next http.Handler) http.Handler {
 				zap.Int("bytes_written", ww.BytesWritten()),
 			)
 
-			logHTTPStatus(logger, status)
+			logHTTPStatus(l, status)
 		})
 	}
 }
