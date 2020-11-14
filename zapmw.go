@@ -15,60 +15,54 @@ type zapmwkey int
 
 const key zapmwkey = iota
 
-type option struct {
-	setter func(*options)
-}
-
-func (o option) set(opts *options) {
-	o.setter(opts)
-}
-
 type options struct {
 	SuccessLevel     zapcore.Level
 	RedirectionLevel zapcore.Level
 	ClientErrorLevel zapcore.Level
 	ServerErrorLevel zapcore.Level
+	LogRemoteAddr    bool
+	LogUserAgent     bool
+	LogReferrer      bool
 }
 
-// Option configures log levels for response codes.
-type Option interface {
-	set(opts *options)
+// Option configures the logging middleware.
+type Option struct {
+	set func(*options)
 }
 
 // WithSuccessLevel sets the log level for 2xx responses. The default is DebugLevel.
 func WithSuccessLevel(level zapcore.Level) Option {
-	return option{
-		setter: func(opts *options) {
-			opts.SuccessLevel = level
-		},
-	}
+	return Option{set: func(o *options) { o.SuccessLevel = level }}
 }
 
 // WithRedirectionLevel sets the log level for 3xx responses. The default is DebugLevel.
 func WithRedirectionLevel(level zapcore.Level) Option {
-	return option{
-		setter: func(opts *options) {
-			opts.RedirectionLevel = level
-		},
-	}
+	return Option{set: func(o *options) { o.RedirectionLevel = level }}
 }
 
 // WithClientErrorLevel sets the log level for 4xx responses. The default is DebugLevel.
 func WithClientErrorLevel(level zapcore.Level) Option {
-	return option{
-		setter: func(opts *options) {
-			opts.ClientErrorLevel = level
-		},
-	}
+	return Option{set: func(o *options) { o.ClientErrorLevel = level }}
 }
 
 // WithServerErrorLevel sets the log level for 5xx responses. The default is ErrorLevel.
 func WithServerErrorLevel(level zapcore.Level) Option {
-	return option{
-		setter: func(opts *options) {
-			opts.ServerErrorLevel = level
-		},
-	}
+	return Option{set: func(o *options) { o.ServerErrorLevel = level }}
+}
+
+// WithRemoteAddr adds a remote_addr field to the logger with the value of *http.Request.RemoteAddr.
+func WithRemoteAddr() Option {
+	return Option{set: func(o *options) { o.LogRemoteAddr = true }}
+}
+
+// WithUserAgent adds a user_agent field to the logger with the value of *http.Request.UserAgent().
+func WithUserAgent() Option {
+	return Option{set: func(o *options) { o.LogUserAgent = true }}
+}
+
+// WithReferrer adds a referrer field to the logger with the value of *http.Request.Referer().
+func WithReferrer() Option {
+	return Option{set: func(o *options) { o.LogReferrer = true }}
 }
 
 // New returns a new logging middleware using the provided *zap.Logger
@@ -94,11 +88,20 @@ func New(logger *zap.Logger, opts ...Option) func(next http.Handler) http.Handle
 			l := logger.With(
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
-				zap.String("remote_addr", r.RemoteAddr),
-				zap.String("user_agent", r.UserAgent()),
-				zap.String("referrer", r.Referer()),
 				zap.Time("start_time", start),
 			)
+
+			if defaultOpts.LogRemoteAddr {
+				l = l.With(zap.String("remote_addr", r.RemoteAddr))
+			}
+
+			if defaultOpts.LogUserAgent {
+				l = l.With(zap.String("user_agent", r.UserAgent()))
+			}
+
+			if defaultOpts.LogReferrer {
+				l = l.With(zap.String("referrer", r.Referer()))
+			}
 
 			// wrap response writer
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)

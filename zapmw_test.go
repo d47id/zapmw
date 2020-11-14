@@ -39,7 +39,7 @@ func TestZapMW(t *testing.T) {
 	mw(next).ServeHTTP(w, r)
 
 	// log successful requests at info level
-	mw = New(l, WithSuccessLevel(zapcore.InfoLevel))
+	mw = New(l, WithSuccessLevel(zapcore.InfoLevel), WithRemoteAddr())
 	next = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Extract(r.Context()).Info("handler message", zap.String("handler_field", "testing is fun"))
 		w.WriteHeader(http.StatusOK)
